@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getUserById, getPrototypes } from "@/lib/db";
+import { ensureSuperAdmin } from "@/lib/auth";
 import { TopNav } from "@/components/TopNav";
 import { PrototypeGrid } from "@/components/PrototypeGrid";
 
 export default async function Home() {
+  // 容错：确保超管账号存在（冷启动 /tmp 清空时需要重建）
+  try { await ensureSuperAdmin(); } catch (e) { console.error("ensureSuperAdmin failed:", e); }
+
   const s = await getSession();
   if (!s.userId) redirect("/login");
 
@@ -12,9 +16,10 @@ export default async function Home() {
   if (!user || !user.enabled) redirect("/login");
 
   const all = await getPrototypes();
+  const visibleIds = user.visibleProjectIds || [];
   const visible = user.role === "super_admin"
     ? all
-    : all.filter(p => !p.archived && (user.visibleProjectIds.length === 0 || user.visibleProjectIds.includes(p.id)));
+    : all.filter(p => !p.archived && (visibleIds.length === 0 || visibleIds.includes(p.id)));
 
   return (
     <>

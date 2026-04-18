@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getUserById } from "@/lib/db";
+import { ensureSuperAdmin } from "@/lib/auth";
 import { TopNav } from "@/components/TopNav";
 import { UploadForm } from "@/components/UploadForm";
 
 export default async function UploadPage() {
+  try { await ensureSuperAdmin(); } catch (e) { console.error("ensureSuperAdmin failed:", e); }
   const s = await getSession();
   if (!s.userId) redirect("/login");
   const user = await getUserById(s.userId);
