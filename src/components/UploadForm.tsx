@@ -5,10 +5,20 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import JSZip from "jszip";
 
-const CONCURRENCY = 6;        // 同时 6 个并发上传
-const MAX_FILE_SIZE = 4 * 1024 * 1024;  // 单文件 4MB 上限
+const CONCURRENCY = 12;        // 并发上传数
+const MAX_FILE_SIZE = 4 * 1024 * 1024;  // 单文件 4MB 上限（超过会被跳过）
 const MAX_TOTAL_SIZE = 200 * 1024 * 1024;
 const ENTRY_CANDIDATES = ["index.html", "index.htm", "start.html", "main.html", "home.html"];
+
+// 跳过这些无意义的垃圾文件
+function isJunkPath(name: string): boolean {
+  if (name.startsWith("__MACOSX/")) return true;
+  if (name === ".DS_Store" || name.endsWith("/.DS_Store") || name.includes("/.DS_Store")) return true;
+  if (name.endsWith("Thumbs.db") || name.endsWith(".AppleDouble")) return true;
+  // 嵌套 zip 通常是 Axure 导出时附带的备份，预览用不到
+  if (/\.(zip|rp|rplib|7z|rar|tar|gz)$/i.test(name)) return true;
+  return false;
+}
 
 export function UploadForm() {
   const router = useRouter();
@@ -58,12 +68,12 @@ export function UploadForm() {
     try {
       // 1. 浏览器本地解压 zip
       const zip = await JSZip.loadAsync(file);
-      const allEntries = Object.entries(zip.files)
-        .filter(([, f]) => !f.dir)
-        .filter(([name]) => !name.startsWith("__MACOSX/"))
-        .filter(([name]) => !name.endsWith("/.DS_Store") && name !== ".DS_Store" && !name.includes("/.DS_Store"));
+      const rawEntries = Object.entries(zip.files).filter(([, f]) => !f.dir);
+      const junkCount = rawEntries.filter(([n]) => isJunkPath(n)).length;
+      const allEntries = rawEntries.filter(([n]) => !isJunkPath(n));
 
       if (allEntries.length === 0) { toast.error("压缩包内没有可用文件"); setUploading(false); return; }
+      if (junkCount > 0) console.log(`已跳过 ${junkCount} 个垃圾/嵌套压缩文件`);
 
       // 剥离单一顶级目录（如 "项目名/"）
       const topDirs = new Set(allEntries.map(([n]) => n.split("/")[0]));
@@ -95,15 +105,27 @@ export function UploadForm() {
       }
       if (!detectedEntry) { toast.error("压缩包内未找到 HTML 入口文件"); setUploading(false); return; }
 
-      // 检查单文件大小
-      const oversized = tasks.filter(t => (t.zipObj as any)._data?.uncompressedSize > MAX_FILE_SIZE);
-      if (oversized.length > 0) {
-        toast.error(`有 ${oversized.length} 个文件超过 4MB，无法上传（${oversized[0].relativePath}）`);
-        setUploading(false); return;
+      // 超大文件跳过（不阻塞）
+      const finalTasks: typeof tasks = [];
+      const skipped: string[] = [];
+      for (const t of tasks) {
+        const size = (t.zipObj as any)._data?.uncompressedSize || 0;
+        if (size > MAX_FILE_SIZE) skipped.push(`${t.relativePath} (${(size/1024/1024).toFixed(1)}MB)`);
+        else finalTasks.push(t);
+      }
+      if (skipped.length > 0) {
+        toast.warning(`已跳过 ${skipped.length} 个超 4MB 大文件：${skipped.slice(0,3).join(", ")}${skipped.length>3 ? ` 等` : ""}`);
+        console.log("skipped files:", skipped);
+      }
+
+      const finalTaskCount = finalTasks.length;
+      if (finalTaskCount > 3000) {
+        const confirmed = confirm(`解压后有 ${finalTaskCount} 个文件（Axure 导出通常很大），预计上传需要 3-10 分钟。是否继续？`);
+        if (!confirmed) { setUploading(false); return; }
       }
 
       // 2. 并发上传
-      setPhase(`上传中 (0/${tasks.length})`);
+      setPhase(`上传中 (0/${finalTaskCount})`);
       let completed = 0;
       let totalBytes = 0;
       let failedCount = 0;
@@ -125,13 +147,13 @@ export function UploadForm() {
           }
         } finally {
           completed++;
-          setProgress(Math.round((completed / tasks.length) * 100));
-          setPhase(`上传中 (${completed}/${tasks.length})`);
+          setProgress(Math.round((completed / finalTaskCount) * 100));
+          setPhase(`上传中 (${completed}/${finalTaskCount})`);
         }
       }
 
       // 并发 worker pool
-      const queue = [...tasks];
+      const queue = [...finalTasks];
       const workers = Array(Math.min(CONCURRENCY, queue.length)).fill(null).map(async () => {
         while (queue.length > 0) {
           const t = queue.shift();
@@ -142,9 +164,12 @@ export function UploadForm() {
       });
       await Promise.all(workers);
 
-      if (failedCount > 0) {
+      if (failedCount > 0 && failedCount > finalTaskCount * 0.1) {
         toast.error(`${failedCount} 个文件上传失败，请重试`);
         setUploading(false); return;
+      }
+      if (failedCount > 0) {
+        toast.warning(`${failedCount} 个文件上传失败（其余已成功）`);
       }
 
       // 3. Finalize 创建元数据
@@ -156,14 +181,14 @@ export function UploadForm() {
           slug, name: name.trim(), description: description.trim(),
           entryFile: detectedEntry,
           accessPassword: accessPassword || null,
-          fileCount: tasks.length,
+          fileCount: finalTaskCount,
           sizeBytes: totalBytes,
         }),
       });
       const finalData = await finalRes.json();
       if (!finalRes.ok) { toast.error(finalData.error || "保存失败"); setUploading(false); return; }
 
-      toast.success(`上传成功！${tasks.length} 个文件，${(totalBytes/1024/1024).toFixed(1)}MB`);
+      toast.success(`上传成功！${finalTaskCount} 个文件，${(totalBytes/1024/1024).toFixed(1)}MB`);
       setTimeout(() => router.push("/"), 800);
     } catch (err: any) {
       console.error(err);
