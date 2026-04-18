@@ -78,8 +78,28 @@ export async function GET(
   const ext = path.extname(safeRel);
   const contentType = obj.contentType || guessMime(ext);
 
+  // HTML：注入 <base> 标签让相对路径基于原型根解析（修复 Vercel 剥斜杠问题）
   if (/\.html?$/i.test(safeRel)) {
     recordVisitAsync(proto.id, req);
+    let html = obj.body.toString("utf-8");
+    // 当前 HTML 文件所在目录
+    const dir = safeRel.includes("/") ? safeRel.replace(/[^/]+$/, "") : "";
+    const baseHref = `/p/${proto.slug}/${dir}`;
+    const baseTag = `<base href="${baseHref}">`;
+    if (/<base\s/i.test(html)) {
+      html = html.replace(/<base\s[^>]*>/i, baseTag);
+    } else if (/<head[^>]*>/i.test(html)) {
+      html = html.replace(/(<head[^>]*>)/i, `$1\n  ${baseTag}`);
+    } else {
+      html = baseTag + html;
+    }
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=0, must-revalidate",
+      },
+    });
   }
 
   return new NextResponse(new Uint8Array(obj.body), {
