@@ -9,7 +9,10 @@ import fs from "fs/promises";
 import path from "path";
 import type { User, Prototype, StatEvent } from "./types";
 
-const DB_PATH = path.join(process.cwd(), "data", "db.json");
+// Vercel serverless 只允许 /tmp 写，本地开发用 ./data
+const DB_PATH = process.env.VERCEL
+  ? "/tmp/db.json"
+  : path.join(process.cwd(), "data", "db.json");
 
 type DBShape = {
   users: User[];

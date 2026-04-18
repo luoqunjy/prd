@@ -8,7 +8,11 @@
 import fs from "fs/promises";
 import path from "path";
 
-const LOCAL_ROOT = path.join(process.cwd(), "data", "storage");
+// Vercel serverless 只有 /tmp 可写（但重启会丢）
+// 正式生产请配置 R2 环境变量
+const LOCAL_ROOT = process.env.VERCEL
+  ? "/tmp/storage"
+  : path.join(process.cwd(), "data", "storage");
 
 const useR2 = !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY);
 
