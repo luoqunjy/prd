@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #F5F7FA;
+  color: #1F2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-1.5 px-4 h-9 rounded-md text-sm font-medium transition;
+}
+.btn-primary { @apply bg-primary text-white hover:bg-primary-hover; }
+.btn-default { @apply bg-white border border-gray-200 text-gray-700 hover:bg-gray-50; }
+.btn-danger { @apply bg-red-500 text-white hover:bg-red-600; }
+.btn-ghost { @apply text-gray-600 hover:bg-gray-100; }
+
+.input {
+  @apply w-full h-10 px-3 border border-gray-300 rounded-md text-sm
+         focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary;
+}
+.label { @apply text-sm text-gray-700 mb-1.5 block font-medium; }
+
+.card { @apply bg-white rounded-lg shadow-card; }
+
+.tag { @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium; }
+.tag-success { @apply bg-green-50 text-green-700; }
+.tag-warning { @apply bg-amber-50 text-amber-700; }
+.tag-danger  { @apply bg-red-50 text-red-700; }
+.tag-default { @apply bg-gray-100 text-gray-600; }
