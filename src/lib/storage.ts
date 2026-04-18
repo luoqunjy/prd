@@ -15,6 +15,8 @@ const LOCAL_ROOT = process.env.VERCEL
   : path.join(process.cwd(), "data", "storage");
 
 const useR2 = !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY);
+// R2 未配置时，用 Upstash Redis 存文件（base64），解决 Vercel /tmp 不共享问题
+const useKVAsStorage = !useR2 && !!process.env.KV_REST_API_URL;
 
 // ========== R2 客户端 ==========
 let r2Client: any = null;
@@ -34,6 +36,37 @@ async function getR2() {
 
 const BUCKET = process.env.R2_BUCKET || "prototype-host";
 
+// ========== KV 兜底（R2 未配时用 Upstash Redis 存文件） ==========
+type KVFile = { b64: string; ct: string | null };
+
+async function kvPut(key: string, body: Buffer, contentType?: string): Promise<void> {
+  const { kv } = await import("@vercel/kv");
+  const payload: KVFile = { b64: body.toString("base64"), ct: contentType || null };
+  await kv.set(`file:${key}`, payload);
+}
+
+async function kvGet(key: string): Promise<{ body: Buffer; contentType: string | null } | null> {
+  const { kv } = await import("@vercel/kv");
+  const payload = await kv.get<KVFile>(`file:${key}`);
+  if (!payload) return null;
+  return { body: Buffer.from(payload.b64, "base64"), contentType: payload.ct };
+}
+
+async function kvDeletePrefix(prefix: string): Promise<void> {
+  const { kv } = await import("@vercel/kv");
+  let cursor: string | number = 0;
+  const toDelete: string[] = [];
+  do {
+    const res = (await kv.scan(cursor, { match: `file:${prefix}*`, count: 100 })) as [string | number, string[]];
+    cursor = res[0];
+    toDelete.push(...res[1]);
+  } while (cursor !== 0 && cursor !== "0");
+  if (toDelete.length > 0) {
+    // @vercel/kv 的 del 接受多个 key
+    await kv.del(...toDelete);
+  }
+}
+
 // ========== API ==========
 export async function putObject(key: string, body: Buffer, contentType?: string): Promise<void> {
   if (useR2) {
@@ -45,6 +78,8 @@ export async function putObject(key: string, body: Buffer, contentType?: string)
       Body: body,
       ContentType: contentType,
     }));
+  } else if (useKVAsStorage) {
+    await kvPut(key, body, contentType);
   } else {
     const full = path.join(LOCAL_ROOT, key);
     await fs.mkdir(path.dirname(full), { recursive: true });
@@ -65,6 +100,8 @@ export async function getObject(key: string): Promise<{ body: Buffer; contentTyp
       if (e.name === "NoSuchKey") return null;
       throw e;
     }
+  } else if (useKVAsStorage) {
+    return await kvGet(key);
   } else {
     const full = path.join(LOCAL_ROOT, key);
     try {
@@ -92,13 +129,15 @@ export async function deletePrefix(prefix: string): Promise<void> {
       }
       continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
     } while (continuationToken);
+  } else if (useKVAsStorage) {
+    await kvDeletePrefix(prefix);
   } else {
     const full = path.join(LOCAL_ROOT, prefix);
     try { await fs.rm(full, { recursive: true, force: true }); } catch {}
   }
 }
 
-export function storageMode() { return useR2 ? "r2" : "local"; }
+export function storageMode() { return useR2 ? "r2" : useKVAsStorage ? "kv" : "local"; }
 
 // ========== MIME helper ==========
 export function guessMime(ext: string): string {
