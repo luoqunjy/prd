@@ -30,8 +30,10 @@ export function UploadForm() {
     setFile(f);
     if (!name) setName(f.name.replace(/\.zip$/i, ""));
     if (!slug) {
-      const guessed = f.name.replace(/\.zip$/i, "").toLowerCase()
-        .replace(/[^a-z0-9\u4e00-\u9fa5-]+/gi, "-").replace(/^-+|-+$/g, "");
+      // slug 只允许 ASCII 字母数字和短横线（中文 URL 在 Vercel 边缘层有兼容性问题）
+      let guessed = f.name.replace(/\.zip$/i, "").toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+      if (!guessed) guessed = "proto-" + Date.now().toString(36);
       setSlug(guessed);
     }
   }
@@ -47,8 +49,8 @@ export function UploadForm() {
     e.preventDefault();
     if (!file) { toast.error("请选择压缩包"); return; }
     if (!name.trim()) { toast.error("请填写原型名称"); return; }
-    if (!slug.trim() || !/^[a-z0-9\u4e00-\u9fa5-]+$/i.test(slug)) {
-      toast.error("Slug 只能含字母、数字、中文、短横线"); return;
+    if (!slug.trim() || !/^[a-z0-9-]+$/i.test(slug)) {
+      toast.error("Slug 只能含英文字母、数字、短横线（为兼容性不支持中文）"); return;
     }
 
     setUploading(true);

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     if (!file) return NextResponse.json({ error: "未上传文件" }, { status: 400 });
     if (!name) return NextResponse.json({ error: "名称必填" }, { status: 400 });
-    if (!/^[a-z0-9\u4e00-\u9fa5-]+$/i.test(slug)) return NextResponse.json({ error: "Slug 格式非法" }, { status: 400 });
+    if (!/^[a-z0-9-]+$/i.test(slug)) return NextResponse.json({ error: "Slug 只能含英文字母、数字、短横线" }, { status: 400 });
 
     const existing = await getPrototypeBySlug(slug);
     if (existing) return NextResponse.json({ error: `Slug "${slug}" 已被占用，请换一个` }, { status: 409 });
