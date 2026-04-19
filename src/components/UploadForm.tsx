@@ -64,6 +64,8 @@ export function UploadForm() {
     setUploading(true);
     setProgress(0);
     setPhase("解压中...");
+    const M = (window as any).Mascot;
+    if (M) { M.onCasting?.(); M.say?.("tuanxiaoman", "正在拆 zip 啦~", 3000); }
 
     try {
       // 1. 浏览器本地解压 zip
@@ -189,10 +191,12 @@ export function UploadForm() {
       if (!finalRes.ok) { toast.error(finalData.error || "保存失败"); setUploading(false); return; }
 
       toast.success(`上传成功！${finalTaskCount} 个文件，${(totalBytes/1024/1024).toFixed(1)}MB`);
-      setTimeout(() => router.push("/"), 800);
+      if (M) M.onSuccess?.();
+      setTimeout(() => router.push("/"), 1000);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "上传失败");
+      if (M) M.onError?.();
       setUploading(false);
     }
   }

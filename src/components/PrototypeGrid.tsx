@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -19,6 +19,28 @@ function fmtSize(n: number) {
 
 function fmtDate(n: number) {
   return new Date(n).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function EmptyState() {
+  const luluRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const W = window as any;
+      if (W.Mascot && luluRef.current) {
+        W.Mascot.mountLulu(luluRef.current, { size: 120 });
+        setTimeout(() => W.Mascot.say("lulu", "把第一个原型传上来吧~", 5000), 800);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="card p-16 text-center bg-gradient-to-b from-pink-50/60 via-white to-white border border-pink-100">
+      <div ref={luluRef} className="inline-block mb-2" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2 mt-4">还没有原型</h3>
+      <p className="text-gray-500 mb-6">拖个 zip 上来，秒变分享链接</p>
+      <Link href="/upload" className="btn btn-primary inline-flex shadow-md shadow-primary/20">+ 上传第一个原型</Link>
+    </div>
+  );
 }
 
 export function PrototypeGrid({ prototypes, isAdmin }: Props) {
@@ -72,14 +94,7 @@ export function PrototypeGrid({ prototypes, isAdmin }: Props) {
   }
 
   if (prototypes.length === 0) {
-    return (
-      <div className="card p-16 text-center">
-        <div className="text-6xl mb-4">📦</div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">还没有原型</h3>
-        <p className="text-gray-500 mb-6">上传你的第一个原型，开始在线展示</p>
-        <Link href="/upload" className="btn btn-primary inline-flex">+ 上传原型</Link>
-      </div>
-    );
+    return <EmptyState />;
   }
 
   return (
