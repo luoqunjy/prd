@@ -99,22 +99,30 @@ export function PrototypeGrid({ prototypes, isAdmin }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div id="list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {prototypes.map(p => (
-          <div key={p.id} className="card overflow-hidden hover:shadow-lg transition group">
+          <div key={p.id} className="card overflow-hidden group transition-all hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-pink-200">
             <button onClick={() => tryOpen(p)} className="block w-full text-left">
-              <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+              <div className="aspect-video bg-gradient-to-br from-pink-50 to-amber-50 relative overflow-hidden">
                 {p.coverUrl ? (
-                  <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                  <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-5xl opacity-30">🎨</div>
+                  <div className="flex items-center justify-center h-full relative">
+                    <img src="/mascot/tuanxiaoman.png" alt="" className="w-20 h-20 opacity-70 group-hover:scale-110 group-hover:opacity-100 transition" />
+                  </div>
                 )}
                 {p.accessPassword && (
-                  <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded">🔒 需密码</div>
+                  <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs px-2 py-0.5 rounded-full shadow">🔒 需密码</div>
                 )}
                 {p.archived && (
-                  <div className="absolute top-2 left-2 bg-gray-600 text-white text-xs px-2 py-0.5 rounded">已归档</div>
+                  <div className="absolute top-2 left-2 bg-gray-700 text-white text-xs px-2 py-0.5 rounded-full">已归档</div>
                 )}
+                {/* 打开按钮叠加层 */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <span className="bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium text-gray-900 shadow-lg">
+                    ▶ 打开预览
+                  </span>
+                </div>
               </div>
             </button>
             <div className="p-4">
@@ -130,11 +138,13 @@ export function PrototypeGrid({ prototypes, isAdmin }: Props) {
                   const link = `${location.origin}/p/${p.slug}/`;
                   navigator.clipboard.writeText(link);
                   toast.success("链接已复制");
-                }} className="btn btn-default h-8 text-xs px-2">📋</button>
+                  const W = window as any;
+                  if (W.Mascot) { W.Mascot.say("tuanxiaoman", "链接复制好啦~发给他!", 2500); }
+                }} className="btn btn-default h-8 text-xs px-2" title="复制链接">📋</button>
                 {isAdmin && (
                   <>
-                    <Link href={`/admin/prototypes/${p.slug}`} className="btn btn-default h-8 text-xs px-2">⚙️</Link>
-                    <button onClick={() => handleDelete(p)} disabled={deleting === p.id} className="btn btn-danger h-8 text-xs px-2">
+                    <Link href={`/admin/prototypes/${p.slug}`} className="btn btn-default h-8 text-xs px-2" title="管理">⚙️</Link>
+                    <button onClick={() => handleDelete(p)} disabled={deleting === p.id} className="btn btn-danger h-8 text-xs px-2" title="删除">
                       {deleting === p.id ? "..." : "🗑️"}
                     </button>
                   </>

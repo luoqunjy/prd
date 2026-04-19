@@ -4,6 +4,7 @@ import { getUserById } from "@/lib/db";
 import { ensureSuperAdmin } from "@/lib/auth";
 import { TopNav } from "@/components/TopNav";
 import { UploadForm } from "@/components/UploadForm";
+import { UploadHeader } from "@/components/UploadHeader";
 
 export default async function UploadPage() {
   try { await ensureSuperAdmin(); } catch (e) { console.error("ensureSuperAdmin failed:", e); }
@@ -17,10 +18,7 @@ export default async function UploadPage() {
     <>
       <TopNav userName={user.name} role={user.role} />
       <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">上传原型</h1>
-          <p className="text-gray-500 text-sm mt-1">拖拽或选择 zip 压缩包，上传后自动托管并生成预览链接</p>
-        </div>
+        <UploadHeader />
         <UploadForm />
       </main>
     </>

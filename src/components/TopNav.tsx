@@ -19,40 +19,70 @@ export function TopNav({ userName, role }: Props) {
     router.push("/login");
   }
 
-  const linkClass = (href: string) =>
-    `px-3 h-10 inline-flex items-center text-sm font-medium transition ${
-      pathname === href || (href !== "/" && pathname?.startsWith(href))
-        ? "text-primary border-b-2 border-primary"
+  const linkClass = (href: string) => {
+    const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href));
+    return `relative px-3 h-10 inline-flex items-center text-sm font-medium transition ${
+      isActive
+        ? "text-primary"
         : "text-gray-600 hover:text-gray-900"
     }`;
+  };
 
   return (
-    <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
+    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="h-8 w-8 rounded-lg bg-primary text-white font-bold flex items-center justify-center">🎨</span>
-            <span className="font-semibold text-gray-900">原型托管</span>
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="relative h-9 w-9 rounded-xl overflow-hidden bg-gradient-to-br from-pink-100 to-amber-100 flex items-center justify-center ring-2 ring-pink-200/50 transition group-hover:scale-110 group-hover:rotate-6">
+              <img src="/mascot/tuanxiaoman.png" alt="团小满" className="w-8 h-8 object-contain" />
+            </span>
+            <div>
+              <div className="font-semibold text-gray-900 leading-tight">原型托管</div>
+              <div className="text-[10px] text-gray-400 leading-tight">团小满陪你</div>
+            </div>
           </Link>
-          <nav className="flex gap-1">
-            <Link href="/" className={linkClass("/")}>原型列表</Link>
-            <Link href="/upload" className={linkClass("/upload")}>上传原型</Link>
+          <nav className="flex gap-0">
+            <TopNavLink href="/" active={pathname === "/"}>原型列表</TopNavLink>
+            <TopNavLink href="/upload" active={pathname?.startsWith("/upload") || false}>上传原型</TopNavLink>
             {role === "super_admin" && (
               <>
-                <Link href="/admin/users" className={linkClass("/admin/users")}>用户管理</Link>
-                <Link href="/admin/stats" className={linkClass("/admin/stats")}>访问统计</Link>
+                <TopNavLink href="/admin/users" active={pathname?.startsWith("/admin/users") || false}>用户管理</TopNavLink>
+                <TopNavLink href="/admin/stats" active={pathname?.startsWith("/admin/stats") || false}>访问统计</TopNavLink>
               </>
             )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">
-            {userName}
-            {role === "super_admin" && <span className="ml-1 tag tag-success">超管</span>}
-          </span>
-          <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-900">退出</button>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-white flex items-center justify-center font-medium shadow-sm">
+              {userName.charAt(0)}
+            </div>
+            <span className="text-gray-700">{userName}</span>
+            {role === "super_admin" && (
+              <span className="tag tag-success text-[10px] px-1.5">超管</span>
+            )}
+          </div>
+          <button onClick={logout} className="text-sm text-gray-400 hover:text-gray-900 transition">
+            退出
+          </button>
         </div>
       </div>
     </header>
+  );
+}
+
+function TopNavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`relative px-3 h-10 inline-flex items-center text-sm font-medium transition ${
+        active ? "text-primary" : "text-gray-600 hover:text-gray-900"
+      }`}
+    >
+      {children}
+      {active && (
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-gradient-to-r from-primary to-purple-500" />
+      )}
+    </Link>
   );
 }

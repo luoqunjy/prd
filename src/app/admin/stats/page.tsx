@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { getUserById, getPrototypes, loadDB } from "@/lib/db";
 import { TopNav } from "@/components/TopNav";
 import { StatsDashboard } from "@/components/StatsDashboard";
+import { PageHero } from "@/components/PageHero";
 
 export default async function StatsPage() {
   const s = await getSession();
@@ -37,10 +38,13 @@ export default async function StatsPage() {
     <>
       <TopNav userName={user.name} role={user.role} />
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">访问统计</h1>
-          <p className="text-gray-500 text-sm mt-1">近 30 天访问数据 · 按原型排行</p>
-        </div>
+        <PageHero
+          title="访问统计"
+          subtitle={`近 30 天：${totalPV} 次访问 · ${totalUV} 个独立访客 · ${prototypes.length} 个原型`}
+          tip="看看哪些原型最受欢迎呀~"
+          luluSize={80}
+          gradient="blue"
+        />
         <StatsDashboard
           totalPV={totalPV}
           totalUV={totalUV}
